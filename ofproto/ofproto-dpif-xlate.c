@@ -4996,7 +4996,7 @@ xlate_wc_finish(struct xlate_ctx *ctx)
         ctx->wc->masks.vlan_tci |= htons(VLAN_CFI);
     }
 }
-
+//TODO add new action support
 /* Translates the flow, actions, or rule in 'xin' into datapath actions in
  * 'xout'.
  * The caller must take responsibility for eventually freeing 'xout', with
