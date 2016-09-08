@@ -1,6 +1,11 @@
 Open vSwitch
 ============
 
+Build Status:
+-------------
+
+[![Build Status](https://api.travis-ci.org/zhangkeyao/OpenvSwitch-tunnel.png)](https://travis-ci.org/zhangkeyao/OpenvSwitch-tunnel)
+
 What is our work based on Open vSwitch?
 -------------
 
