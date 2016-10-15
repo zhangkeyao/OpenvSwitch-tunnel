@@ -4225,6 +4225,8 @@ recirc_unroll_actions(const struct ofpact *ofpacts, size_t ofpacts_len,
         case OFPACT_SAMPLE:
         case OFPACT_DEBUG_RECIRC:
         case OFPACT_CT:
+        case OFPACT_PUSH_SDN_TUNNEL://edited by keyaozhang
+        case OFPACT_POP_SDN_TUNNEL:
             /* These may not generate PACKET INs. */
             break;
 

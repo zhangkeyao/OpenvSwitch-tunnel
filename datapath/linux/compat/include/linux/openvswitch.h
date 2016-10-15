@@ -623,6 +623,13 @@ struct ovs_action_push_vlan {
 	__be16 vlan_tci;	/* 802.1Q TCI (VLAN ID and priority). */
 };
 
+/**
+ *
+ */
+struct ovs_action_push_sdn_tunnel {
+
+};
+
 /* Data path hash algorithm for computing Datapath hash.
  *
  * The algorithm type only specifies the fields in a flow

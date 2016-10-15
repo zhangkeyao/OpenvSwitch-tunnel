@@ -5731,13 +5731,14 @@ ofpacts_execute_action_set(struct ofpbuf *action_list,
     /* The OpenFlow spec "Action Set" section specifies this order. */
     ofpacts_copy_last(action_list, action_set, OFPACT_STRIP_VLAN);
     ofpacts_copy_last(action_list, action_set, OFPACT_POP_MPLS);
+    ofpacts_copy_last(action_list, action_set, OFPACT_POP_SDN_TUNNEL);/*edited by keyaozhang*/
     ofpacts_copy_last(action_list, action_set, OFPACT_PUSH_MPLS);
     ofpacts_copy_last(action_list, action_set, OFPACT_PUSH_VLAN);
     ofpacts_copy_last(action_list, action_set, OFPACT_DEC_TTL);
     ofpacts_copy_last(action_list, action_set, OFPACT_DEC_MPLS_TTL);
     ofpacts_copy_all(action_list, action_set, ofpact_is_set_or_move_action);
     ofpacts_copy_last(action_list, action_set, OFPACT_SET_QUEUE);
-
+    ofpacts_copy_last(action_list, action_set, OFPACT_PUSH_SDN_TUNNEL);/*edited by keyaozhang*/
     /* If both OFPACT_GROUP and OFPACT_OUTPUT are present, OpenFlow says that
      * we should execute only OFPACT_GROUP.
      *
