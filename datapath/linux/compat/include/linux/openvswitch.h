@@ -42,6 +42,7 @@
 
 #include <linux/types.h>
 #include <linux/if_ether.h>
+#include <asm/byteorder.h>
 
 /**
  * struct ovs_header - header for OVS Generic Netlink messages.
@@ -623,12 +624,61 @@ struct ovs_action_push_vlan {
 	__be16 vlan_tci;	/* 802.1Q TCI (VLAN ID and priority). */
 };
 
-/**
+/*
+ * SDN Tunnel Header:
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |Version|  Type |     Length    |             ID1               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |              ID2              |             ID3               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * Version = 0x1
+ *
+ * Type = 0x1
+ *
+ * Length = 0x03
+ *
+ * ID1-ID3 = Tunnel ID
  *
  */
-struct ovs_action_push_sdn_tunnel {
 
+struct sdn_tunnel_header {
+#if defined(__LITTLE_ENDIAN_BITFIELD)
+
+	__u8    type:4;
+	__u8    version:4;
+#elif defined(__BIG_ENDIAN_BITFIELD)
+
+	__u8    version:4;
+	__u8    type:4;
+#else
+#error "Please fix <asm/byteorder.h>"
+#endif
+	__u8    length;
+	__be32  ID1;
+	__be32  ID2;
+	__be32  ID3;
 };
+
+#define SDN_TNL_Version     0x1
+#define SDN_TNL_TYPE        0x1
+#define SDN_TNL_TYPE_EXP    0xF
+#define SDN_TNL_DST_PORT    4791   /* UDP Port for SDN Tunnel */
+
+#define SDN_TNL_HEADER_PUSH_SIZE 8
+#define SDN_TNL_PUSH_SIZE 512
+
+#ifndef __KERNEL__
+
+struct ovs_action_push_sdn_tnl {
+    ovs_be32 src_ip;
+    ovs_be32 dst_ip;
+    uint8_t id_length;
+    uint16_t tun_id1;
+    uint16_t tun_id2;
+    uint16_t tun_id3;
+	uint8_t header[SDN_TNL_PUSH_SIZE];
+};
+#endif
 
 /* Data path hash algorithm for computing Datapath hash.
  *
@@ -672,6 +722,7 @@ struct ovs_action_push_tnl {
 	uint8_t  header[TNL_PUSH_HEADER_SIZE];
 };
 #endif
+
 
 /**
  * enum ovs_ct_attr - Attributes for %OVS_ACTION_ATTR_CT action.
@@ -770,7 +821,7 @@ enum ovs_action_attr {
 	OVS_ACTION_ATTR_TUNNEL_PUSH,   /* struct ovs_action_push_tnl*/
 	OVS_ACTION_ATTR_TUNNEL_POP,    /* u32 port number. */
 	OVS_ACTION_ATTR_SDN_TUNNEL_PUSH,    /* struct ovs_action_push_sdn_tnl */
-	OVS_ACTION_ATTR_SDN_TUNNEL_POP,     /* struct_ovs_action_pop_sdn_tnl*/
+	OVS_ACTION_ATTR_SDN_TUNNEL_POP,     /* No argument. */
 #endif
 	__OVS_ACTION_ATTR_MAX,	      /* Nothing past this will be accepted
 				       * from userspace. */
