@@ -723,6 +723,42 @@ struct udp_header {
 };
 BUILD_ASSERT_DECL(UDP_HEADER_LEN == sizeof(struct udp_header));
 
+/*
+ * SDN Tunnel Header:
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |Version|  Type |     Length    |             ID1               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * |              ID2              |             ID3               |
+ * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ * Version = 0x1
+ *
+ * Type = 0x1
+ *
+ * Length = 0x03
+ *
+ * ID1-ID3 = Tunnel ID
+ *
+ */
+
+#define SDN_TUNNEL_HEADER_LEN 8
+struct sdn_tunnel_header {
+	uint8_t sdt_ver_type;
+	uint8_t sdt_len;
+	ovs_be16 sdt_id1;
+	ovs_be16 sdt_id2;
+	ovs_be16 sdt_id3;
+};
+BUILD_ASSERT_DECL(SDN_TUNNEL_HEADER_LEN == sizeof(struct sdn_tunnel_header));
+
+#define SDT_VER(sdt_ver_type) ((sdt_ver_type) >> 4)
+#define SDT_TYPE(sdt_ver_type) ((sdt_ver_type) & 15)
+#define SDT_VER_TYPE(ver, type) (((ver) << 4) | (type))
+
+#define SDN_TNL_VERSION     0x01
+#define SDN_TNL_TYPE        0x01
+#define SDN_TNL_TYPE_EXP    0x0F
+#define SDN_TNL_DST_PORT    4791   /* UDP Port for SDN Tunnel */
+
 #define TCP_FIN 0x001
 #define TCP_SYN 0x002
 #define TCP_RST 0x004
@@ -1026,6 +1062,9 @@ int ipv6_count_cidr_bits(const struct in6_addr *netmask);
 bool ipv6_is_cidr(const struct in6_addr *netmask);
 char *ipv6_parse_masked(const char *s, struct in6_addr *ipv6,
                         struct in6_addr *mask);
+
+void push_sdn_tunnel(struct dp_packet *packet, const void *sdt);
+void pop_sdn_tunnel(struct dp_packet *packet);
 
 void *eth_compose(struct dp_packet *, const struct eth_addr eth_dst,
                   const struct eth_addr eth_src, uint16_t eth_type,

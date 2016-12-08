@@ -447,6 +447,7 @@ miniflow_extract(struct dp_packet *packet, struct miniflow *dst)
     const char *l2;
     ovs_be16 dl_type;
     uint8_t nw_frag, nw_tos, nw_ttl, nw_proto;
+    ovs_be32 src_ip = 0, dst_ip = 0;
 
     /* Metadata. */
     if (flow_tnl_dst_is_set(&md->tunnel)) {
@@ -558,6 +559,8 @@ miniflow_extract(struct dp_packet *packet, struct miniflow *dst)
 
         miniflow_push_be32(mf, ipv6_label, 0); /* Padding for IPv4. */
 
+        src_ip = get_16aligned_be32(&nh->ip_src);
+        dst_ip = get_16aligned_be32(&nh->ip_dst);
         nw_tos = nh->ip_tos;
         nw_ttl = nh->ip_ttl;
         nw_proto = nh->ip_proto;
@@ -724,6 +727,20 @@ miniflow_extract(struct dp_packet *packet, struct miniflow *dst)
                 miniflow_push_be16(mf, tp_src, udp->udp_src);
                 miniflow_push_be16(mf, tp_dst, udp->udp_dst);
                 miniflow_pad_to_64(mf, igmp_group_ip4);
+                if (udp->udp_dst == SDN_TNL_DST_PORT) {
+                	uint8_t tun_type, id_length;
+                	miniflow_push_be32(mf, sdtunnel.src_ip, src_ip);
+                	miniflow_push_be32(mf, sdtunnel.dst_ip, dst_ip);
+                	const struct sdn_tunnel_header *sdntnl = data;
+                	tun_type = SDT_TYPE(sdntnl->sdt_ver_type);
+                	if (OVS_UNLIKELY(tun_type != SDN_TNL_TYPE))
+                		goto out;
+                	id_length = sdntnl->sdt_len;
+                	miniflow_push_be16(mf, sdtunnel.tun_type, BYTES_TO_BE16(tun_type, id_length));
+                	miniflow_push_be16(mf, sdtunnel.tun_id1, sdntnl->sdt_id1);
+                	miniflow_push_be16(mf, sdtunnel.tun_id2, sdntnl->sdt_id2);
+                	miniflow_push_be16(mf, sdtunnel.tun_id3, sdntnl->sdt_id3);
+                }
             }
         } else if (OVS_LIKELY(nw_proto == IPPROTO_SCTP)) {
             if (OVS_LIKELY(size >= SCTP_HEADER_LEN)) {
@@ -1240,17 +1257,6 @@ void flow_wildcards_init_for_packet(struct flow_wildcards *wc,
         WC_MASK_FIELD(wc, tunnel.tun_id);
     }
 
-    /* SDN Tunnel fields wildcarded. edited by keyaozhang */
-    if (flow->sdtunnel.tun_type) {
-    	WC_MASK_FIELD(wc, sdtunnel.src_ip);
-    	WC_MASK_FIELD(wc, sdtunnel.dst_ip);
-    	WC_MASK_FIELD(wc, sdtunnel.tun_type);
-    	WC_MASK_FIELD(wc, sdtunnel.id_length);
-    	WC_MASK_FIELD(wc, sdtunnel.tun_id1);
-    	WC_MASK_FIELD(wc, sdtunnel.tun_id2);
-    	WC_MASK_FIELD(wc, sdtunnel.tun_id3);
-    }
-
     /* metadata, regs, and conj_id wildcarded. */
 
     WC_MASK_FIELD(wc, skb_priority);
@@ -1322,6 +1328,17 @@ void flow_wildcards_init_for_packet(struct flow_wildcards *wc,
             WC_MASK_FIELD(wc, nd_target);
         } else if (flow->nw_proto == IPPROTO_IGMP) {
             WC_MASK_FIELD(wc, igmp_group_ip4);
+        } else if (flow->nw_proto == IPPROTO_UDP) {
+            /* SDN Tunnel fields wildcarded. edited by keyaozhang */
+            if (flow->tp_dst == SDN_TNL_DST_PORT) {
+            	WC_MASK_FIELD(wc, sdtunnel.src_ip);
+            	WC_MASK_FIELD(wc, sdtunnel.dst_ip);
+            	WC_MASK_FIELD(wc, sdtunnel.tun_type);
+            	WC_MASK_FIELD(wc, sdtunnel.id_length);
+            	WC_MASK_FIELD(wc, sdtunnel.tun_id1);
+            	WC_MASK_FIELD(wc, sdtunnel.tun_id2);
+            	WC_MASK_FIELD(wc, sdtunnel.tun_id3);
+            }
         }
     }
 }
@@ -1382,6 +1399,15 @@ flow_wc_map(const struct flow *flow, struct flowmap *map)
             FLOWMAP_SET(map, tcp_flags);
             FLOWMAP_SET(map, tp_src);
             FLOWMAP_SET(map, tp_dst);
+            if (OVS_UNLIKELY(flow->tp_dst == SDN_TNL_DST_PORT)){
+            	FLOWMAP_SET(map, sdtunnel.src_ip);
+            	FLOWMAP_SET(map, sdtunnel.dst_ip);
+            	FLOWMAP_SET(map, sdtunnel.tun_type);
+            	FLOWMAP_SET(map, sdtunnel.id_length);
+            	FLOWMAP_SET(map, sdtunnel.tun_id1);
+            	FLOWMAP_SET(map, sdtunnel.tun_id2);
+            	FLOWMAP_SET(map, sdtunnel.tun_id3);
+            }
         }
     } else if (flow->dl_type == htons(ETH_TYPE_IPV6)) {
         FLOWMAP_SET(map, ipv6_src);

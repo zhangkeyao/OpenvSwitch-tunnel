@@ -1,0 +1,6 @@
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/openvswitch.ko
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/vport-geneve.ko
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/vport-gre.ko
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/vport-lisp.ko
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/vport-stt.ko
+kernel//home/zhangkeyao/openvswitch-2.5.0-modified/datapath/linux/vport-vxlan.ko

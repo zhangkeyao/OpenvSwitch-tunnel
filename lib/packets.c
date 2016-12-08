@@ -33,6 +33,8 @@
 #include "dp-packet.h"
 #include "unaligned.h"
 
+static uint16_t tnl_udp_port_min = 32768;
+static uint16_t tnl_udp_port_max = 61000;
 const struct in6_addr in6addr_exact = IN6ADDR_EXACT_INIT;
 const struct in6_addr in6addr_all_hosts = IN6ADDR_ALL_HOSTS_INIT;
 
@@ -1110,6 +1112,57 @@ packet_format_tcp_flags(struct ds *s, uint16_t tcp_flags)
         ds_put_cstr(s, "[800]");
     }
 }
+
+static ovs_be16
+get_tnl_src_port(struct dp_packet *packet)
+{
+    uint32_t hash;
+
+    hash = dp_packet_get_rss_hash(packet);
+
+    return htons((((uint64_t) hash * (tnl_udp_port_max - tnl_udp_port_min)) >> 32) +
+                 tnl_udp_port_min);
+}
+
+void
+push_sdn_tunnel(struct dp_packet *packet, const void *sdt)
+{
+	void *header;
+	struct eth_header *eth;
+	struct ip_header *ip;
+	struct udp_header *udp;
+	const struct ovs_action_push_sdn_tnl *push_sdt = (const struct ovs_action_push_sdn_tnl *)sdt;
+    const uint8_t *pdata = push_sdt->header;
+    int ip_tot_size, udp_tot_size;
+    if (push_sdt->type != SDN_TNL_TYPE)
+        return;
+    header = dp_packet_push_uninit(packet, push_sdt->header_len);
+    ip_tot_size = dp_packet_size(packet) - sizeof (struct eth_header);
+    memcpy(header, pdata, push_sdt->header_len);
+    eth = (struct eth_header *)header;
+    ip = (struct ip_header *)(eth + 1);
+    ip->ip_tot_len = htons(ip_tot_size);
+    ip->ip_csum = recalc_csum16(ip->ip_csum, 0, ip->ip_tot_len);
+    udp_tot_size = ip_tot_size - IP_HEADER_LEN;
+    udp->udp_src = get_tnl_src_port(packet);
+    udp->udp_len = htons(udp_tot_size);
+    uint32_t csum;
+    csum = packet_csum_pseudoheader(ip);
+    csum = csum_continue(csum, udp, udp_tot_size);
+    udp->udp_csum = csum_finish(csum);
+}
+
+
+void
+pop_sdn_tunnel(struct dp_packet *packet)
+{
+	int header_len = ETH_HEADER_LEN + IP_HEADER_LEN + UDP_HEADER_LEN + SDN_TUNNEL_HEADER_LEN;
+	if (header_len > dp_packet_size(packet)) {
+		return;
+	}
+	dp_packet_reset_packet(packet, header_len);
+}
+
 
 #define ARP_PACKET_SIZE  (2 + ETH_HEADER_LEN + VLAN_HEADER_LEN + \
                           ARP_ETH_HEADER_LEN)

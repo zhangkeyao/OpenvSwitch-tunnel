@@ -111,9 +111,6 @@ struct flow {
     ofp_port_t actset_output;   /* Output port in action set. */
     uint8_t pad2[2];            /* Pad to 64 bits. */
 
-    /*SDN Tunnel Header (64-bit aligned). edited by keyaozhang*/
-    struct sdn_tnl sdtunnel;    /* SDN tunnel parameters */
-
     /* L2, Order the same as in the Ethernet header! (64-bit aligned) */
     struct eth_addr dl_dst;     /* Ethernet destination address. */
     struct eth_addr dl_src;     /* Ethernet source address. */
@@ -142,9 +139,13 @@ struct flow {
     ovs_be16 tp_dst;            /* TCP/UDP/SCTP destination port/ICMP code. */
     ovs_be32 igmp_group_ip4;    /* IGMP group IPv4 address.
                                  * Keep last for BUILD_ASSERT_DECL below. */
+
+    /*SDN Tunnel Header (64-bit aligned). edited by keyaozhang*/
+    struct sdn_tnl sdtunnel;    /* SDN tunnel parameters */
 };
 BUILD_ASSERT_DECL(sizeof(struct flow) % sizeof(uint64_t) == 0);
 BUILD_ASSERT_DECL(sizeof(struct flow_tnl) % sizeof(uint64_t) == 0);
+BUILD_ASSERT_DECL(sizeof(struct sdn_tnl) % sizeof(uint64_t) == 0);
 
 #define FLOW_U64S (sizeof(struct flow) / sizeof(uint64_t))
 
